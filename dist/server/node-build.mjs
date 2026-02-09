@@ -391,9 +391,25 @@ const app = createServer();
 const port = process.env.PORT || 3e3;
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const distPath = path.join(__dirname, "../spa");
-console.log("Static files path:", distPath);
+const possiblePaths = [
+  path.join(__dirname, "../spa"),
+  path.join(process.cwd(), "dist/spa"),
+  path.join(process.cwd(), "dist", "spa"),
+  path.resolve("dist/spa")
+];
+let distPath = possiblePaths[0];
+for (const p of possiblePaths) {
+  if (fs.existsSync(p)) {
+    distPath = p;
+    console.log("Found static files at:", p);
+    break;
+  }
+}
+console.log("Using static files path:", distPath);
 console.log("Path exists:", fs.existsSync(distPath));
+if (fs.existsSync(distPath)) {
+  console.log("Files in dist:", fs.readdirSync(distPath));
+}
 const mimeTypes = {
   ".js": "application/javascript",
   ".mjs": "application/javascript",
