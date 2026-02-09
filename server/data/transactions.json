@@ -1,0 +1,20 @@
+[
+    {
+        "id": "TX-1707038400000",
+        "date": "2024-02-04",
+        "amount": 1000,
+        "description": "Maintenance Fee",
+        "category": "MAINTENANCE",
+        "type": "CREDIT",
+        "timestamp": 1707038400000
+    },
+    {
+        "id": "TX-1707124800000",
+        "date": "2024-02-05",
+        "amount": 500,
+        "description": "Late Fee",
+        "category": "PENALTY",
+        "type": "DEBIT",
+        "timestamp": 1707124800000
+    }
+]
