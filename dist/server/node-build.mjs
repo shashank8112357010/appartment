@@ -1,10 +1,10 @@
 import path from "path";
+import { fileURLToPath } from "url";
 import "dotenv/config";
 import * as express from "express";
 import express__default from "express";
 import cors from "cors";
 import fs from "fs";
-import { fileURLToPath } from "url";
 const handleDemo = (req, res) => {
   const response = {
     message: "Hello from Express server"
@@ -12,8 +12,8 @@ const handleDemo = (req, res) => {
   res.status(200).json(response);
 };
 const router = express__default.Router();
-const __filename = fileURLToPath(import.meta.url);
-const __dirname$1 = path.dirname(__filename);
+const __filename$1 = fileURLToPath(import.meta.url);
+const __dirname$1 = path.dirname(__filename$1);
 const DATA_DIR = path.resolve(__dirname$1, "../data");
 const readJson = (file) => {
   const filePath = path.join(DATA_DIR, file);
@@ -390,7 +390,8 @@ function createServer() {
 }
 const app = createServer();
 const port = process.env.PORT || 3e3;
-const __dirname = import.meta.dirname;
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 const distPath = path.join(__dirname, "../spa");
 app.use(express.static(distPath));
 app.get("*", (req, res) => {
