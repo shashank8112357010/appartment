@@ -1,7 +1,8 @@
 import path from "path";
 import { fileURLToPath } from "url";
+import fs from "fs";
 import { createServer } from "./index";
-import * as express from "express";
+import express from "express";
 
 const app = createServer();
 const port = process.env.PORT || 3000;
@@ -11,20 +12,41 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const distPath = path.join(__dirname, "../spa");
 
-// Serve static files with correct MIME types
-app.use(express.static(distPath, {
-  setHeaders: (res, filePath) => {
-    if (filePath.endsWith('.js') || filePath.endsWith('.mjs')) {
-      res.setHeader('Content-Type', 'application/javascript');
-    } else if (filePath.endsWith('.css')) {
-      res.setHeader('Content-Type', 'text/css');
-    } else if (filePath.endsWith('.json')) {
-      res.setHeader('Content-Type', 'application/json');
-    } else if (filePath.endsWith('.webmanifest')) {
-      res.setHeader('Content-Type', 'application/manifest+json');
-    }
+console.log("Static files path:", distPath);
+console.log("Path exists:", fs.existsSync(distPath));
+
+// MIME type map
+const mimeTypes: Record<string, string> = {
+  '.js': 'application/javascript',
+  '.mjs': 'application/javascript',
+  '.css': 'text/css',
+  '.html': 'text/html',
+  '.json': 'application/json',
+  '.webmanifest': 'application/manifest+json',
+  '.svg': 'image/svg+xml',
+  '.png': 'image/png',
+  '.ico': 'image/x-icon',
+};
+
+// Custom static file handler with proper MIME types
+app.use((req, res, next) => {
+  // Skip API routes
+  if (req.path.startsWith('/api')) {
+    return next();
   }
-}));
+
+  const filePath = path.join(distPath, req.path);
+
+  // Check if file exists
+  if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
+    const ext = path.extname(filePath).toLowerCase();
+    const mimeType = mimeTypes[ext] || 'application/octet-stream';
+    res.setHeader('Content-Type', mimeType);
+    return res.sendFile(filePath);
+  }
+
+  next();
+});
 
 // Handle React Router - serve index.html for all non-API routes
 app.get("*", (req, res) => {

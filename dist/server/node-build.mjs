@@ -1,17 +1,16 @@
 import path from "path";
 import { fileURLToPath } from "url";
-import "dotenv/config";
-import * as express from "express";
-import express__default from "express";
-import cors from "cors";
 import fs from "fs";
+import "dotenv/config";
+import express from "express";
+import cors from "cors";
 const handleDemo = (req, res) => {
   const response = {
     message: "Hello from Express server"
   };
   res.status(200).json(response);
 };
-const router = express__default.Router();
+const router = express.Router();
 const __filename$1 = fileURLToPath(import.meta.url);
 const __dirname$1 = path.dirname(__filename$1);
 const DATA_DIR = path.resolve(__dirname$1, "../data");
@@ -376,10 +375,10 @@ router.post("/save-apartments", (req, res) => {
   }
 });
 function createServer() {
-  const app2 = express__default();
+  const app2 = express();
   app2.use(cors());
-  app2.use(express__default.json());
-  app2.use(express__default.urlencoded({ extended: true }));
+  app2.use(express.json());
+  app2.use(express.urlencoded({ extended: true }));
   app2.use("/api", router);
   app2.get("/api/ping", (_req, res) => {
     const ping = process.env.PING_MESSAGE ?? "ping";
@@ -393,19 +392,32 @@ const port = process.env.PORT || 3e3;
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const distPath = path.join(__dirname, "../spa");
-app.use(express.static(distPath, {
-  setHeaders: (res, filePath) => {
-    if (filePath.endsWith(".js") || filePath.endsWith(".mjs")) {
-      res.setHeader("Content-Type", "application/javascript");
-    } else if (filePath.endsWith(".css")) {
-      res.setHeader("Content-Type", "text/css");
-    } else if (filePath.endsWith(".json")) {
-      res.setHeader("Content-Type", "application/json");
-    } else if (filePath.endsWith(".webmanifest")) {
-      res.setHeader("Content-Type", "application/manifest+json");
-    }
+console.log("Static files path:", distPath);
+console.log("Path exists:", fs.existsSync(distPath));
+const mimeTypes = {
+  ".js": "application/javascript",
+  ".mjs": "application/javascript",
+  ".css": "text/css",
+  ".html": "text/html",
+  ".json": "application/json",
+  ".webmanifest": "application/manifest+json",
+  ".svg": "image/svg+xml",
+  ".png": "image/png",
+  ".ico": "image/x-icon"
+};
+app.use((req, res, next) => {
+  if (req.path.startsWith("/api")) {
+    return next();
   }
-}));
+  const filePath = path.join(distPath, req.path);
+  if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
+    const ext = path.extname(filePath).toLowerCase();
+    const mimeType = mimeTypes[ext] || "application/octet-stream";
+    res.setHeader("Content-Type", mimeType);
+    return res.sendFile(filePath);
+  }
+  next();
+});
 app.get("*", (req, res) => {
   if (req.path.startsWith("/api/") || req.path.startsWith("/health")) {
     return res.status(404).json({ error: "API endpoint not found" });
