@@ -1,0 +1,12 @@
+{
+  "cctv": {
+    "userId": "miradwal.kumar@gmail.com",
+    "password": "hero@9227",
+    "verificationCode": "QQMODP",
+    "appLink": "https://play.google.com/store/apps/details?id=com.connect.enduser"
+  },
+  "maintenance": {
+    "monthlyAmount": 250,
+    "totalUnits": 10
+  }
+}

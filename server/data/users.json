@@ -1,0 +1,89 @@
+[
+  {
+    "id": "admin",
+    "role": "admin",
+    "phone": "admin",
+    "password": "admin",
+    "name": "Administrator"
+  },
+  {
+    "id": "u100",
+    "role": "owner",
+    "phone": "9719555369",
+    "password": "552255",
+    "name": "AMAN",
+    "flatId": 100
+  },
+  {
+    "id": "u101",
+    "role": "owner",
+    "phone": "9650654026",
+    "password": "552255",
+    "name": "SHARMA JI",
+    "flatId": 101
+  },
+  {
+    "id": "u102",
+    "role": "owner",
+    "phone": "9910057679",
+    "password": "552255",
+    "name": "MANISH TOMAR",
+    "flatId": 102
+  },
+  {
+    "id": "u103",
+    "role": "owner",
+    "phone": "9312890998",
+    "password": "552255",
+    "name": "NAVEEN",
+    "flatId": 103
+  },
+  {
+    "id": "u201",
+    "role": "owner",
+    "phone": "9810415054",
+    "password": "552255",
+    "name": "DANGWAL",
+    "flatId": 201
+  },
+  {
+    "id": "u202",
+    "role": "owner",
+    "phone": "9911300816",
+    "password": "552255",
+    "name": "GIRISH PANDEY",
+    "flatId": 202
+  },
+  {
+    "id": "u203",
+    "role": "owner",
+    "phone": "9911220555",
+    "password": "552255",
+    "name": "BIKRAM",
+    "flatId": 203
+  },
+  {
+    "id": "u301",
+    "role": "owner",
+    "phone": "9999971362",
+    "password": "552255",
+    "name": "GIRISH",
+    "flatId": 301
+  },
+  {
+    "id": "u302",
+    "role": "owner",
+    "phone": "9999606636",
+    "password": "552255",
+    "name": "ARVIND",
+    "flatId": 302
+  },
+  {
+    "id": "u303",
+    "role": "owner",
+    "phone": "9911828077",
+    "password": "552255",
+    "name": "CHANDAN",
+    "flatId": 303
+  }
+]

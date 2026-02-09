@@ -1,140 +1,437 @@
 import express from 'express';
-import Apartment from '../models/Apartment';
-import Transaction from '../models/Transaction';
+import fs from 'fs';
+import path from 'path';
 
 const router = express.Router();
+const DATA_DIR = path.resolve(process.cwd(), 'server/data');
 
-// GET all data (bootstrapping)
-router.get('/data', async (req, res) => {
-  try {
-    const apartments = await Apartment.find().sort({ id: 1 });
-    const transactions = await Transaction.find().sort({ timestamp: -1 });
-    res.json({
-      transactions: transactions.map(t => ({
-        id: t.txId,
-        date: t.date,
-        amount: t.amount,
-        description: t.description,
-        category: t.category,
-        type: t.type,
-        flatId: t.flatId,
-        createdBy: t.createdBy,
-        proofUrl: t.proofUrl,
-        timestamp: t.timestamp
-      })),
-      apartments: apartments.map(a => ({
-        id: a.id,
-        floor: a.floor,
-        owner: a.owner,
-        phone: a.phone,
-        status: a.status,
-        lastPayment: a.lastPayment,
-        amount: a.amount,
-        type: a.type,
-        advance: a.advance,
-        pending: a.pending,
-        deposit: a.deposit
-      }))
-    });
-  } catch (err: any) {
-    console.error('Error fetching data:', err);
-    res.status(500).json({ error: err.message });
+// Helper to read JSON
+const readJson = (file: string) => {
+  const filePath = path.join(DATA_DIR, file);
+  if (!fs.existsSync(filePath)) return null;
+  const data = fs.readFileSync(filePath, 'utf-8');
+  return JSON.parse(data);
+};
+
+// Helper to write JSON
+const writeJson = (file: string, data: any) => {
+  const filePath = path.join(DATA_DIR, file);
+  if (!fs.existsSync(DATA_DIR)) {
+    fs.mkdirSync(DATA_DIR, { recursive: true });
   }
-});
+  fs.writeFileSync(filePath, JSON.stringify(data, null, 2));
+};
 
-// POST save transactions (replace all)
-router.post('/save-transactions', async (req, res) => {
+// ============ AUTH ============
+router.post('/auth/login', (req, res) => {
   try {
-    const transactions = req.body;
+    const { phone, password, role } = req.body;
+    const users = readJson('users.json') || [];
 
-    // Clear existing and insert new
-    await Transaction.deleteMany({});
-
-    if (transactions && transactions.length > 0) {
-      const docs = transactions.map((t: any) => ({
-        txId: t.id,
-        date: t.date,
-        amount: t.amount,
-        description: t.description,
-        category: t.category,
-        type: t.type,
-        flatId: t.flatId,
-        createdBy: t.createdBy,
-        proofUrl: t.proofUrl,
-        timestamp: t.timestamp
-      }));
-      await Transaction.insertMany(docs);
-    }
-
-    res.status(200).json({ success: true });
-  } catch (err: any) {
-    console.error('Error saving transactions:', err);
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// POST save apartments (replace all)
-router.post('/save-apartments', async (req, res) => {
-  try {
-    const apartments = req.body;
-
-    // Clear existing and insert new
-    await Apartment.deleteMany({});
-
-    if (apartments && apartments.length > 0) {
-      await Apartment.insertMany(apartments);
-    }
-
-    res.status(200).json({ success: true });
-  } catch (err: any) {
-    console.error('Error saving apartments:', err);
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// PATCH update single apartment
-router.patch('/apartments/:id', async (req, res) => {
-  try {
-    const apartmentId = parseInt(req.params.id);
-    const updates = req.body;
-
-    const apartment = await Apartment.findOneAndUpdate(
-      { id: apartmentId },
-      { $set: updates },
-      { new: true }
+    const user = users.find((u: any) =>
+      u.phone === phone && u.password === password && u.role === role
     );
 
-    if (!apartment) {
-      return res.status(404).json({ error: 'Apartment not found' });
+    if (user) {
+      res.json({
+        success: true,
+        user: {
+          id: user.id,
+          name: user.name,
+          role: user.role,
+          flatId: user.flatId
+        }
+      });
+    } else {
+      res.status(401).json({ success: false, error: 'Invalid credentials' });
     }
-
-    res.json({ success: true, apartment });
   } catch (err: any) {
-    console.error('Error updating apartment:', err);
     res.status(500).json({ error: err.message });
   }
 });
 
-// POST add single transaction
-router.post('/transactions', async (req, res) => {
+// ============ APARTMENTS ============
+router.get('/apartments', (req, res) => {
   try {
-    const transaction = new Transaction({
-      txId: req.body.id,
-      date: req.body.date,
-      amount: req.body.amount,
-      description: req.body.description,
-      category: req.body.category,
-      type: req.body.type,
-      flatId: req.body.flatId,
-      createdBy: req.body.createdBy,
-      proofUrl: req.body.proofUrl,
-      timestamp: req.body.timestamp
-    });
-
-    await transaction.save();
-    res.status(201).json({ success: true, transaction });
+    const apartments = readJson('apartments.json') || [];
+    res.json(apartments);
   } catch (err: any) {
-    console.error('Error adding transaction:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/apartments', (req, res) => {
+  try {
+    writeJson('apartments.json', req.body);
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.patch('/apartments/:id', (req, res) => {
+  try {
+    const apartments = readJson('apartments.json') || [];
+    const id = parseInt(req.params.id);
+    const index = apartments.findIndex((a: any) => a.id === id);
+
+    if (index !== -1) {
+      apartments[index] = { ...apartments[index], ...req.body };
+      writeJson('apartments.json', apartments);
+      res.json({ success: true, apartment: apartments[index] });
+    } else {
+      res.status(404).json({ error: 'Apartment not found' });
+    }
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ============ TRANSACTIONS ============
+router.get('/transactions', (req, res) => {
+  try {
+    const transactions = readJson('transactions.json') || [];
+    res.json(transactions);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/transactions', (req, res) => {
+  try {
+    const transactions = readJson('transactions.json') || [];
+    const newTransaction = { ...req.body, id: req.body.id || `TX-${Date.now()}` };
+    transactions.push(newTransaction);
+    writeJson('transactions.json', transactions);
+    res.json({ success: true, transaction: newTransaction });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.put('/transactions', (req, res) => {
+  try {
+    writeJson('transactions.json', req.body);
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ============ NOTIFICATIONS ============
+router.get('/notifications', (req, res) => {
+  try {
+    const notifications = readJson('notifications.json') || [];
+    const { flatId } = req.query;
+
+    if (flatId) {
+      const filtered = notifications.filter((n: any) =>
+        n.sendToAll || n.flatId === parseInt(flatId as string)
+      );
+      res.json(filtered);
+    } else {
+      res.json(notifications);
+    }
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/notifications', (req, res) => {
+  try {
+    const notifications = readJson('notifications.json') || [];
+    const newNotification = {
+      ...req.body,
+      id: `N-${Date.now()}`,
+      createdAt: new Date().toISOString(),
+      read: false
+    };
+    notifications.unshift(newNotification);
+    writeJson('notifications.json', notifications);
+    res.json({ success: true, notification: newNotification });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.patch('/notifications/:id', (req, res) => {
+  try {
+    const notifications = readJson('notifications.json') || [];
+    const index = notifications.findIndex((n: any) => n.id === req.params.id);
+
+    if (index !== -1) {
+      notifications[index] = { ...notifications[index], ...req.body };
+      writeJson('notifications.json', notifications);
+      res.json({ success: true });
+    } else {
+      res.status(404).json({ error: 'Notification not found' });
+    }
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.delete('/notifications/:id', (req, res) => {
+  try {
+    let notifications = readJson('notifications.json') || [];
+    notifications = notifications.filter((n: any) => n.id !== req.params.id);
+    writeJson('notifications.json', notifications);
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ============ CHAT MESSAGES ============
+router.get('/messages', (req, res) => {
+  try {
+    const messages = readJson('messages.json') || [];
+    res.json(messages);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/messages', (req, res) => {
+  try {
+    const messages = readJson('messages.json') || [];
+    const newMessage = {
+      ...req.body,
+      id: `M-${Date.now()}`,
+      timestamp: new Date().toISOString()
+    };
+    messages.push(newMessage);
+    writeJson('messages.json', messages);
+    res.json({ success: true, message: newMessage });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ============ BUDGET ============
+router.get('/budget', (req, res) => {
+  try {
+    const budget = readJson('budget.json') || { items: [], monthlyCollections: [] };
+    res.json(budget);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/budget', (req, res) => {
+  try {
+    writeJson('budget.json', req.body);
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/budget/items', (req, res) => {
+  try {
+    const budget = readJson('budget.json') || { items: [], monthlyCollections: [] };
+    const newItem = { ...req.body, id: `BI-${Date.now()}` };
+    budget.items.push(newItem);
+    writeJson('budget.json', budget);
+    res.json({ success: true, item: newItem });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ============ PAYMENTS ============
+router.get('/payments', (req, res) => {
+  try {
+    const payments = readJson('payments.json') || [];
+    const { flatId } = req.query;
+
+    if (flatId) {
+      const filtered = payments.filter((p: any) => p.flatId === parseInt(flatId as string));
+      res.json(filtered);
+    } else {
+      res.json(payments);
+    }
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/payments', (req, res) => {
+  try {
+    const payments = readJson('payments.json') || [];
+    const newPayment = {
+      ...req.body,
+      id: `P-${Date.now()}`,
+      createdAt: new Date().toISOString()
+    };
+    payments.push(newPayment);
+    writeJson('payments.json', payments);
+    res.json({ success: true, payment: newPayment });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ============ TENANTS ============
+router.get('/tenants', (req, res) => {
+  try {
+    const tenants = readJson('tenants.json') || [];
+    const { flatId } = req.query;
+
+    if (flatId) {
+      const filtered = tenants.filter((t: any) => t.flatId === parseInt(flatId as string));
+      res.json(filtered);
+    } else {
+      res.json(tenants);
+    }
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/tenants', (req, res) => {
+  try {
+    const tenants = readJson('tenants.json') || [];
+    const newTenant = {
+      ...req.body,
+      id: `T-${Date.now()}`,
+      isActive: true
+    };
+    tenants.push(newTenant);
+    writeJson('tenants.json', tenants);
+    res.json({ success: true, tenant: newTenant });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.patch('/tenants/:id', (req, res) => {
+  try {
+    const tenants = readJson('tenants.json') || [];
+    const index = tenants.findIndex((t: any) => t.id === req.params.id);
+
+    if (index !== -1) {
+      tenants[index] = { ...tenants[index], ...req.body };
+      writeJson('tenants.json', tenants);
+      res.json({ success: true, tenant: tenants[index] });
+    } else {
+      res.status(404).json({ error: 'Tenant not found' });
+    }
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.delete('/tenants/:id', (req, res) => {
+  try {
+    let tenants = readJson('tenants.json') || [];
+    tenants = tenants.filter((t: any) => t.id !== req.params.id);
+    writeJson('tenants.json', tenants);
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ============ MAINTENANCE REQUESTS ============
+router.get('/maintenance', (req, res) => {
+  try {
+    const maintenance = readJson('maintenance.json') || [];
+    res.json(maintenance);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/maintenance', (req, res) => {
+  try {
+    const maintenance = readJson('maintenance.json') || [];
+    const newRequest = {
+      ...req.body,
+      id: `MR-${Date.now()}`,
+      status: 'pending',
+      createdAt: new Date().toISOString()
+    };
+    maintenance.push(newRequest);
+    writeJson('maintenance.json', maintenance);
+    res.json({ success: true, request: newRequest });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.patch('/maintenance/:id', (req, res) => {
+  try {
+    const maintenance = readJson('maintenance.json') || [];
+    const index = maintenance.findIndex((m: any) => m.id === req.params.id);
+
+    if (index !== -1) {
+      maintenance[index] = { ...maintenance[index], ...req.body };
+      writeJson('maintenance.json', maintenance);
+      res.json({ success: true });
+    } else {
+      res.status(404).json({ error: 'Request not found' });
+    }
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ============ SETTINGS ============
+router.get('/settings', (req, res) => {
+  try {
+    const settings = readJson('settings.json') || {};
+    res.json(settings);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/settings', (req, res) => {
+  try {
+    const settings = readJson('settings.json') || {};
+    const updated = { ...settings, ...req.body };
+    writeJson('settings.json', updated);
+    res.json({ success: true, settings: updated });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ============ BOOTSTRAP ALL DATA ============
+router.get('/data', (req, res) => {
+  try {
+    res.json({
+      apartments: readJson('apartments.json') || [],
+      transactions: readJson('transactions.json') || [],
+      notifications: readJson('notifications.json') || [],
+      messages: readJson('messages.json') || [],
+      budget: readJson('budget.json') || { items: [], monthlyCollections: [] },
+      payments: readJson('payments.json') || [],
+      tenants: readJson('tenants.json') || [],
+      maintenance: readJson('maintenance.json') || [],
+      settings: readJson('settings.json') || {}
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Legacy endpoints for backward compatibility
+router.post('/save-transactions', (req, res) => {
+  try {
+    writeJson('transactions.json', req.body);
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/save-apartments', (req, res) => {
+  try {
+    writeJson('apartments.json', req.body);
+    res.json({ success: true });
+  } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
 });
