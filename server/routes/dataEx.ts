@@ -35,12 +35,7 @@ router.post('/auth/login', (req, res) => {
     if (user) {
       res.json({
         success: true,
-        user: {
-          id: user.id,
-          name: user.name,
-          role: user.role,
-          flatId: user.flatId
-        }
+        user: { id: user.id, name: user.name, role: user.role, flatId: user.flatId }
       });
     } else {
       res.status(401).json({ success: false, error: 'Invalid credentials' });
@@ -227,18 +222,6 @@ router.post('/budget', (req, res) => {
   }
 });
 
-router.post('/budget/items', (req, res) => {
-  try {
-    const budget = readJson('budget.json') || { items: [], monthlyCollections: [] };
-    const newItem = { ...req.body, id: `BI-${Date.now()}` };
-    budget.items.push(newItem);
-    writeJson('budget.json', budget);
-    res.json({ success: true, item: newItem });
-  } catch (err: any) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
 // ============ PAYMENTS ============
 router.get('/payments', (req, res) => {
   try {
@@ -417,7 +400,7 @@ router.get('/data', (req, res) => {
   }
 });
 
-// Legacy endpoints for backward compatibility
+// Legacy endpoints
 router.post('/save-transactions', (req, res) => {
   try {
     writeJson('transactions.json', req.body);
