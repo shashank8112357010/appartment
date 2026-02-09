@@ -4,6 +4,7 @@ import * as express from "express";
 import express__default from "express";
 import cors from "cors";
 import fs from "fs";
+import { fileURLToPath } from "url";
 const handleDemo = (req, res) => {
   const response = {
     message: "Hello from Express server"
@@ -11,7 +12,9 @@ const handleDemo = (req, res) => {
   res.status(200).json(response);
 };
 const router = express__default.Router();
-const DATA_DIR = path.resolve(process.cwd(), "server/data");
+const __filename = fileURLToPath(import.meta.url);
+const __dirname$1 = path.dirname(__filename);
+const DATA_DIR = path.resolve(__dirname$1, "../data");
 const readJson = (file) => {
   const filePath = path.join(DATA_DIR, file);
   if (!fs.existsSync(filePath)) return null;

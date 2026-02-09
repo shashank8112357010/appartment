@@ -1,9 +1,16 @@
 import express from 'express';
 import fs from 'fs';
 import path from 'path';
+import { fileURLToPath } from 'url';
 
 const router = express.Router();
-const DATA_DIR = path.resolve(process.cwd(), 'server/data');
+
+// Get directory of this file for reliable path resolution
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Data directory - works both in dev and production
+const DATA_DIR = path.resolve(__dirname, '../data');
 
 // Helper to read JSON
 const readJson = (file: string) => {
