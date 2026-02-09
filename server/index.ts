@@ -1,10 +1,14 @@
 import "dotenv/config";
 import express from "express";
 import cors from "cors";
+import { connectDB } from "./db/connection";
 import { handleDemo } from "./routes/demo";
 import { dataExRouter } from "./routes/dataEx";
 
-export function createServer() {
+export async function createServer() {
+  // Connect to MongoDB
+  await connectDB();
+
   const app = express();
 
   // Middleware
